@@ -1,6 +1,5 @@
 # test files
 centernet/
-data/
 *.pyc
 
 #idea files
