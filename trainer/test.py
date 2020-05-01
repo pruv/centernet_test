@@ -81,8 +81,7 @@ def train(args):
         print('>> mean loss', mean_loss)
         centernet.save_weight('latest', args.job_dir)  # 'latest', 'best
         elapsed_time = time.time() - start_time
-        print('Duration: '+ elapsed_time)
-
+        print('Duration: ', str(elapsed_time))
 
 
 # def write_graph(session):
