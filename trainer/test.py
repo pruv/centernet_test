@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import time
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -67,8 +68,11 @@ def train(args):
         'val_generator': None  # not used
     }
     centernet = net.CenterNet(config, trainset_provider)
+    sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
     lr = 0.001
+    # your code
     for i in range(args.num_epochs):
+        start_time = time.time()
         print('-' * 25, 'epoch', i, '-' * 25)
         if i in reduce_lr_epoch:
             lr = lr / 10.
@@ -76,6 +80,9 @@ def train(args):
         mean_loss = centernet.train_one_epoch(lr)
         print('>> mean loss', mean_loss)
         centernet.save_weight('latest', args.job_dir)  # 'latest', 'best
+        elapsed_time = time.time() - start_time
+        print('Duration: '+ elapsed_time)
+
 
 
 # def write_graph(session):
