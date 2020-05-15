@@ -1,4 +1,7 @@
 # test files
+data/
+data_small/
+VOC2007/
 centernet/
 *.pyc
 

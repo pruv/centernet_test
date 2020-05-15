@@ -132,10 +132,14 @@ class CenterNet:
             keypoints = self._conv_bn_activation(features, self.num_classes, 3, 1, None)
             offset = self._conv_bn_activation(features, 2, 3, 1, None)
             size = self._conv_bn_activation(features, 2, 3, 1, None)
+
+            # only if data format is channels_first
             if self.data_format == 'channels_first':
                 keypoints = tf.transpose(keypoints, [0, 2, 3, 1])
                 offset = tf.transpose(offset, [0, 2, 3, 1])
                 size = tf.transpose(size, [0, 2, 3, 1])
+
+
             pshape = [tf.shape(offset)[1], tf.shape(offset)[2]]
 
             h = tf.range(0., tf.cast(pshape[0], tf.float32), dtype=tf.float32)
@@ -187,6 +191,7 @@ class CenterNet:
     def _compute_one_image_loss(self, keypoints, offset, size, ground_truth, meshgrid_y, meshgrid_x,
                                 stride, pshape):
         slice_index = tf.argmin(ground_truth, axis=0)[0]
+        # ground_truth[i, :] = np.asarray([ymin, ymax, xmin, xmax, classid], np.float32)
         ground_truth = tf.gather(ground_truth, tf.range(0, slice_index, dtype=tf.int64))
         ngbbox_y = ground_truth[..., 0] / stride
         ngbbox_x = ground_truth[..., 1] / stride

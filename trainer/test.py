@@ -12,11 +12,11 @@ import numpy as np
 import tensorflow as tf
 from skimage import io, transform
 
-import trainer.utils.voc_classname_encoder as classname_to_ids
+import trainer.utils.voc_classname_encoder as voc_classname_encoder
 
 import trainer.model.CenterNet as net
 import trainer.utils.tfrecord_voc_utils as voc_utils
-
+import trainer.model.Centernet_New as centernet_new
 
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
@@ -67,7 +67,8 @@ def train(args):
         'train_generator': train_gen,
         'val_generator': None  # not used
     }
-    centernet = net.CenterNet(config, trainset_provider)
+    # centernet = net.CenterNet(config, trainset_provider)
+    centernet = centernet_new.CenterNetNew(config, trainset_provider)
     sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
     lr = 0.001
     # your code
@@ -84,58 +85,58 @@ def train(args):
         print('Duration: ', str(elapsed_time))
 
 
-# def write_graph(session):
-#     graph = session.graph
-#     tf.train.write_graph(graph, './logs/', 'centernet.pbtxt', True)
-#     train_writer = tf.summary.FileWriter('./logs/')
-#     train_writer.add_graph(graph)
-#     train_writer.flush()
-#     train_writer.close()
+def write_graph(session):
+    graph = session.graph
+    tf.train.write_graph(graph, '../logs/', 'centernet.pbtxt', True)
+    train_writer = tf.summary.FileWriter('../logs/')
+    train_writer.add_graph(graph)
+    train_writer.flush()
+    train_writer.close()
 
-# def test():
-#     config = {
-#         'mode': 'test',  # 'train', 'test'
-#         'input_size': 384,
-#         'data_format': 'channels_last',  # 'channels_last' 'channels_first'
-#         'num_classes': 20,
-#         'weight_decay': 1e-4,
-#         'keep_prob': 0.5,  # not used
-#         'batch_size': batch_size,
-#
-#         'score_threshold': 0.1,
-#         'top_k_results_output': 100,
-#
-#     }
-#     centernet = net.CenterNet(config, None)
-#     centernet.load_pretrained_weight('./centernet/test-668')
-#     # write_graph(centernet.sess)
-#     img = io.imread('frame103.jpg')
-#     img = transform.resize(img, [384, 384])
-#     img = np.expand_dims(img, 0)
-#     result = centernet.test_one_image(img)
-#     id_to_clasname = {k: v for (v, k) in classname_to_ids.items()}
-#     scores = result[0]
-#     bbox = result[1]
-#     class_id = result[2]
-#     print(scores, bbox, class_id)
-#     plt.figure(1)
-#     plt.imshow(np.squeeze(img))
-#     axis = plt.gca()
-#     for i in range(len(scores)):
-#         rect = patches.Rectangle((bbox[i][1], bbox[i][0]), bbox[i][3] - bbox[i][1], bbox[i][2] - bbox[i][0],
-#                                  linewidth=2, edgecolor='b', facecolor='none')
-#         axis.add_patch(rect)
-#         plt.text(bbox[i][1], bbox[i][0], id_to_clasname[class_id[i]] + str(' ') + str(scores[i]), color='red',
-#                  fontsize=12)
-#     plt.show()
-#
-#     print('done')
+def test(args):
+    config = {
+        'mode': 'test',  # 'train', 'test'
+        'input_size': 384,
+        'data_format': 'channels_last',  # 'channels_last' 'channels_first'
+        'num_classes': 20,
+        'weight_decay': 1e-4,
+        'keep_prob': 0.5,  # not used
+        'batch_size': args.batch_size,
+
+        'score_threshold': 0.1,
+        'top_k_results_output': 100,
+
+    }
+    centernet = net.CenterNet(config, None)
+    centernet.load_pretrained_weight('../test_op/centernet/test-10')
+    write_graph(centernet.sess)
+    img = io.imread('frame103.jpg')
+    img = transform.resize(img, [384, 384])
+    img = np.expand_dims(img, 0)
+    result = centernet.test_one_image(img)
+    id_to_clasname = {k: v for (v, k) in voc_classname_encoder.classname_to_ids.items()}
+    scores = result[0]
+    bbox = result[1]
+    class_id = result[2]
+    print(scores, bbox, class_id)
+    plt.figure(1)
+    plt.imshow(np.squeeze(img))
+    axis = plt.gca()
+    for i in range(len(scores)):
+        rect = patches.Rectangle((bbox[i][1], bbox[i][0]), bbox[i][3] - bbox[i][1], bbox[i][2] - bbox[i][0],
+                                 linewidth=2, edgecolor='b', facecolor='none')
+        axis.add_patch(rect)
+        plt.text(bbox[i][1], bbox[i][0], id_to_clasname[class_id[i]] + str(' ') + str(scores[i]), color='red',
+                 fontsize=12)
+    plt.show()
+
+    print('done')
 
 
 if __name__ == '__main__':
     PARSER = argparse.ArgumentParser()
     # Input Arguments
-    PARSER.add_argument('--train-files', help='GCS file or local paths to training data', nargs='+', default='./data')
+    PARSER.add_argument('--train-files', help='GCS file or local paths to training data', default='./data')
     PARSER.add_argument('--job-dir', help='GCS location to write checkpoints and export models',default='./centernet/test')
     PARSER.add_argument('--num-epochs', type=int, default=2)
     PARSER.add_argument('--mode', choices=['train', 'test'], default='train')
@@ -152,3 +153,4 @@ if __name__ == '__main__':
 
     # Run the training job
     train(ARGUMENTS)
+    # test(ARGUMENTS)
