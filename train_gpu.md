@@ -1,0 +1,7 @@
+- git clone https://github.com/pruv/centernet_test.git
+- wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
+- tar -xvf ./VOCtrainval_06-Nov-2007.tar
+- cd VOCdevkit/ (move VOC2007 to project folder)
+- export PYTHONPATH="${PYTHONPATH}:/home/pruduc/centernet_test/"
+- python ./trainer/utils/test_voc_utils.py
+- python ./trainer/test.py --train-files ./data/ --num-epochs 100

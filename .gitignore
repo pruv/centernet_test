@@ -1,8 +1,15 @@
 # test files
-data/
-data_small/
+data/*
+data_small/*
 VOC2007/
+VOC2007_Test/
+test_remote/*
 centernet/
+trainer/*.xml
+trainer/*.jpg
+logs/
+logs2/
+
 *.pyc
 
 #idea files

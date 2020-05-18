@@ -2,7 +2,8 @@ import tensorflow as tf
 import numpy as np
 import sys
 import os
-from trainer.model.DLABackbone import DLABackbone
+from trainer.model.dla_backbone import DLABackbone
+from trainer.model.hourglass import HourglassNetwork
 
 class CenterNetNew:
 
@@ -39,8 +40,10 @@ class CenterNetNew:
         self.global_step = tf.get_variable(name='global_step', initializer=tf.constant(0), trainable=False)
         self.is_training = True
 
+        hourglass = config['backbone'] == 'hourglass'
         self._define_inputs()
-        self._build_graph()
+
+        self._build_graph(hourglass=hourglass)
         self._create_saver()
         if self.mode == 'train':
             self._create_summary()
@@ -73,11 +76,26 @@ class CenterNetNew:
             self.ground_truth = tf.placeholder(tf.float32, [self.batch_size, None, 5], name='labels')
         self.lr = tf.placeholder(dtype=tf.float32, shape=[], name='lr')
 
-    def _build_graph(self):
+    def load_pretrained_weight(self, path):
+        self.pretrained_saver.restore(self.sess, path)
+        print('load pretrained weight', path, 'successfully')
 
-        dla_backbone = DLABackbone(self.data_format, self.is_training)
-        dla_backbone.build_model(self.images)
-        features = dla_backbone.features
+    def test_one_image(self, images):
+        self.is_training = False
+        pred = self.sess.run(self.detection_pred, feed_dict={self.images: images})
+        return pred
+
+    def _build_graph(self, hourglass=False):
+
+        if hourglass:
+            hourglass_backbone = HourglassNetwork(self.images, num_stacks=2, cnv_dim=256, inres=(512,512))
+            # print(hourglass_backbone.summary(line_length=200))
+            features = hourglass_backbone
+        else:
+            dla_backbone = DLABackbone(self.data_format, self.is_training)
+            dla_backbone.build_model(self.images)
+            features = dla_backbone.features
+
         stride = 4.0
         with tf.variable_scope('center_detector'):
             keypoints = self._conv_bn_activation(features, self.num_classes, 3, 1, None)

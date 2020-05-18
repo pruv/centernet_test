@@ -30,9 +30,12 @@ reduce_lr_epoch = []
 
 
 def train(args):
+    inputsize = args.input_size
+
     config = {
+        'backbone': 'hourglass', # hourglass, dla
         'mode': args.mode,  # 'train', 'test'
-        'input_size': 384,
+        'input_size': inputsize,
         'data_format': args.data_format,  # 'channels_last' 'channels_first'
         'num_classes': args.num_classes,
         'weight_decay': 1e-4,
@@ -44,8 +47,8 @@ def train(args):
 
     image_augmentor_config = {
         'data_format': args.data_format,
-        'output_shape': [384, 384],
-        'zoom_size': [400, 400],
+        'output_shape': [inputsize, inputsize],
+        'zoom_size': [600, 600],
         'crop_method': 'random',
         'flip_prob': [0., 0.5],
         'fill_mode': 'BILINEAR',
@@ -61,7 +64,7 @@ def train(args):
 
     train_gen = voc_utils.get_generator(data, args.batch_size, args.buffer_size, image_augmentor_config)
     trainset_provider = {
-        'data_shape': [384, 384, 3],
+        'data_shape': [inputsize, inputsize, 3],
         'num_train': 26,
         'num_val': 0,  # not used
         'train_generator': train_gen,
@@ -84,34 +87,39 @@ def train(args):
         elapsed_time = time.time() - start_time
         print('Duration: ', str(elapsed_time))
 
-
-def write_graph(session):
+def write_graph(session, logsdir):
     graph = session.graph
-    tf.train.write_graph(graph, '../logs/', 'centernet.pbtxt', True)
-    train_writer = tf.summary.FileWriter('../logs/')
+    tf.train.write_graph(graph, logsdir, 'centernet.pbtxt', True)
+    train_writer = tf.summary.FileWriter(logsdir)
     train_writer.add_graph(graph)
     train_writer.flush()
     train_writer.close()
 
 def test(args):
-    config = {
-        'mode': 'test',  # 'train', 'test'
-        'input_size': 384,
-        'data_format': 'channels_last',  # 'channels_last' 'channels_first'
-        'num_classes': 20,
-        'weight_decay': 1e-4,
-        'keep_prob': 0.5,  # not used
-        'batch_size': args.batch_size,
+    input_size = args.input_size
+    weights_path = args.weights_path
+    num_classes = args.num_classes
+    data_format = args.data_format
+    batch_size = args.batch_size
+    logs_dir = args.logs_dir
 
+    config = {
+        'mode': 'test',
+        'input_size': input_size,
+        'data_format': data_format,
+        'num_classes': num_classes,
+        'batch_size': batch_size,
         'score_threshold': 0.1,
         'top_k_results_output': 100,
 
     }
-    centernet = net.CenterNet(config, None)
-    centernet.load_pretrained_weight('../test_op/centernet/test-10')
-    write_graph(centernet.sess)
-    img = io.imread('frame103.jpg')
-    img = transform.resize(img, [384, 384])
+    # centernet = net.CenterNet(config, None)
+    centernet =  centernet_new.CenterNetNew(config, None)
+    centernet.load_pretrained_weight(weights_path)
+    write_graph(centernet.sess, logs_dir)
+
+    img = io.imread('000048.jpg')
+    img = transform.resize(img, [input_size, input_size])
     img = np.expand_dims(img, 0)
     result = centernet.test_one_image(img)
     id_to_clasname = {k: v for (v, k) in voc_classname_encoder.classname_to_ids.items()}
@@ -123,10 +131,11 @@ def test(args):
     plt.imshow(np.squeeze(img))
     axis = plt.gca()
     for i in range(len(scores)):
-        rect = patches.Rectangle((bbox[i][1], bbox[i][0]), bbox[i][3] - bbox[i][1], bbox[i][2] - bbox[i][0],
+        if(class_id[i] == 14):
+            rect = patches.Rectangle((bbox[i][1], bbox[i][0]), bbox[i][3] - bbox[i][1], bbox[i][2] - bbox[i][0],
                                  linewidth=2, edgecolor='b', facecolor='none')
-        axis.add_patch(rect)
-        plt.text(bbox[i][1], bbox[i][0], id_to_clasname[class_id[i]] + str(' ') + str(scores[i]), color='red',
+            axis.add_patch(rect)
+            plt.text(bbox[i][1], bbox[i][0], id_to_clasname[class_id[i]] + str(' ') + str(scores[i]), color='red',
                  fontsize=12)
     plt.show()
 
@@ -136,14 +145,21 @@ def test(args):
 if __name__ == '__main__':
     PARSER = argparse.ArgumentParser()
     # Input Arguments
+
+    # execution config
     PARSER.add_argument('--train-files', help='GCS file or local paths to training data', default='./data')
     PARSER.add_argument('--job-dir', help='GCS location to write checkpoints and export models',default='./centernet/test')
     PARSER.add_argument('--num-epochs', type=int, default=2)
     PARSER.add_argument('--mode', choices=['train', 'test'], default='train')
+    PARSER.add_argument('--weights-path', default='../centernet/test-5') # ../test_remote/run_05152020_0900/test-6719
+    PARSER.add_argument('--logs-dir', default='../logs/') # ../logs2/
+
+    # model config
     PARSER.add_argument('--data-format', choices=['channels_last', 'channels_first'], default='channels_last')
     PARSER.add_argument('--num-classes', type=int, default=20)
     PARSER.add_argument('--batch-size', type=int, default=15)
     PARSER.add_argument('--buffer-size', type=int, default=256)
+    PARSER.add_argument('--input-size', type=int, default=512)
 
     ARGUMENTS, _ = PARSER.parse_known_args()
 
