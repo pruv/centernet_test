@@ -112,13 +112,15 @@ def test(args):
         'score_threshold': 0.1,
         'top_k_results_output': 100,
 
+        'weight_decay': 1e-4,
+        'keep_prob': 0.5
     }
-    # centernet = net.CenterNet(config, None)
-    centernet =  centernet_new.CenterNetNew(config, None)
+    centernet = net.CenterNet(config, None)
+    # centernet =  centernet_new.CenterNetNew(config, None)
     centernet.load_pretrained_weight(weights_path)
     write_graph(centernet.sess, logs_dir)
 
-    img = io.imread('000048.jpg')
+    img = io.imread('./test_images/frame103.jpg') # 000081, 000048, frame103
     img = transform.resize(img, [input_size, input_size])
     img = np.expand_dims(img, 0)
     result = centernet.test_one_image(img)
@@ -131,12 +133,12 @@ def test(args):
     plt.imshow(np.squeeze(img))
     axis = plt.gca()
     for i in range(len(scores)):
-        if(class_id[i] == 14):
-            rect = patches.Rectangle((bbox[i][1], bbox[i][0]), bbox[i][3] - bbox[i][1], bbox[i][2] - bbox[i][0],
-                                 linewidth=2, edgecolor='b', facecolor='none')
-            axis.add_patch(rect)
-            plt.text(bbox[i][1], bbox[i][0], id_to_clasname[class_id[i]] + str(' ') + str(scores[i]), color='red',
-                 fontsize=12)
+        # if(class_id[i] == 14):# person
+        rect = patches.Rectangle((bbox[i][1], bbox[i][0]), bbox[i][3] - bbox[i][1], bbox[i][2] - bbox[i][0],
+                             linewidth=2, edgecolor='b', facecolor='none')
+        axis.add_patch(rect)
+        plt.text(bbox[i][1], bbox[i][0], id_to_clasname[class_id[i]] + str(' ') + str(scores[i]), color='red',
+             fontsize=12)
     plt.show()
 
     print('done')
@@ -151,7 +153,7 @@ if __name__ == '__main__':
     PARSER.add_argument('--job-dir', help='GCS location to write checkpoints and export models',default='./centernet/test')
     PARSER.add_argument('--num-epochs', type=int, default=2)
     PARSER.add_argument('--mode', choices=['train', 'test'], default='train')
-    PARSER.add_argument('--weights-path', default='../centernet/test-5') # ../test_remote/run_05152020_0900/test-6719
+    PARSER.add_argument('--weights-path', default='../test_remote/run_05152020_0900/test-60283') # ../test_remote/run_05152020_0900/test-6719
     PARSER.add_argument('--logs-dir', default='../logs/') # ../logs2/
 
     # model config
@@ -168,5 +170,5 @@ if __name__ == '__main__':
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     # Run the training job
-    train(ARGUMENTS)
-    # test(ARGUMENTS)
+    # train(ARGUMENTS)
+    test(ARGUMENTS)

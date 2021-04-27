@@ -88,7 +88,7 @@ class CenterNetNew:
     def _build_graph(self, hourglass=False):
 
         if hourglass:
-            hourglass_backbone = HourglassNetwork(self.images, num_stacks=2, cnv_dim=256, inres=(512,512))
+            hourglass_backbone = HourglassNetwork(self.images, num_stacks=1, cnv_dim=256, inres=(512,512))
             # print(hourglass_backbone.summary(line_length=200))
             features = hourglass_backbone
         else:
@@ -295,8 +295,6 @@ class CenterNetNew:
         return mean_loss
 
     def _create_saver(self):
-        weights = tf.trainable_variables('backone')
-        self.pretrained_saver = tf.train.Saver(weights)
         self.saver = tf.train.Saver()
         self.best_saver = tf.train.Saver()
 

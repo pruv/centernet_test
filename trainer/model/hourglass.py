@@ -80,8 +80,6 @@ def HourglassNetwork(input_images, num_stacks, cnv_dim=256, inres=(512, 512), we
       inter = Add(name='inters.%d.inters.add' % i)([inter_, cnv_])
       inter = Activation('relu', name='inters.%d.inters.relu' % i)(inter)
       inter = residual(inter, cnv_dim, 'inters.%d' % i)
-
-  # model = Model(inputs=input_images, outputs=[inter])
   return inter
 
 
@@ -135,14 +133,15 @@ def left_features(bottom, hgid, dims):
   # create left half blocks for hourglass module
   # f1, f2, f4 , f8, f16, f32 : 1, 1/2, 1/4 1/8, 1/16, 1/32 resolution
   # 5 times reduce/increase: (256, 384, 384, 384, 512)
-  features = [bottom]
-  for kk, nh in enumerate(dims):
-    pow_str = ''
-    for _ in range(kk):
-      pow_str += '.center'
-    _x = residual(features[-1], nh, name='kps.%d%s.down.0' % (hgid, pow_str), stride=2)
-    _x = residual(_x, nh, name='kps.%d%s.down.1' % (hgid, pow_str))
-    features.append(_x)
+  with tf.variable_scope('left_features'):
+    features = [bottom]
+    for kk, nh in enumerate(dims):
+      pow_str = ''
+      for _ in range(kk):
+        pow_str += '.center'
+      _x = residual(features[-1], nh, name='kps.%d%s.down.0' % (hgid, pow_str), stride=2)
+      _x = residual(_x, nh, name='kps.%d%s.down.1' % (hgid, pow_str))
+      features.append(_x)
   return features
 
 
@@ -170,10 +169,11 @@ def bottleneck_layer(_x, num_channels, hgid):
 
 
 def right_features(leftfeatures, hgid, dims):
-  rf = bottleneck_layer(leftfeatures[-1], dims[-1], hgid)
-  for kk in reversed(range(len(dims))):
-    pow_str = ''
-    for _ in range(kk):
-      pow_str += 'center.'
-    rf = connect_left_right(leftfeatures[kk], rf, dims[kk], dims[max(kk - 1, 0)], name='kps.%d.%s' % (hgid, pow_str))
+  with tf.variable_scope('right_features'):
+    rf = bottleneck_layer(leftfeatures[-1], dims[-1], hgid)
+    for kk in reversed(range(len(dims))):
+      pow_str = ''
+      for _ in range(kk):
+        pow_str += 'center.'
+      rf = connect_left_right(leftfeatures[kk], rf, dims[kk], dims[max(kk - 1, 0)], name='kps.%d.%s' % (hgid, pow_str))
   return rf
